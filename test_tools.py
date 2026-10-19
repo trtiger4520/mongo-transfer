@@ -45,6 +45,19 @@ def test():
     assert open(cfg, encoding="utf-8").read() == 'uri: "mongodb://u:p\\"w@h/?authSource=app"\n'
     os.remove(cfg)
 
+    assert os.path.join("out", "a_b_.json") in tools.export_args("db", "a:b?", "json", "out")[1]
+
+    old, new = tools.write_config("mongodb://h"), tools.write_config("mongodb://h")
+    os.utime(old, (0, 0))
+    tools.cleanup_configs()
+    assert not os.path.exists(old) and os.path.exists(new)
+    os.remove(new)
+
+    with tempfile.TemporaryDirectory() as d:
+        store.SETTINGS_FILE = store.Path(d, "settings.json")
+        store.SETTINGS_FILE.write_text("{broken", encoding="utf-8")
+        assert store.load_settings() == {}
+
     assert store.decrypt(store.encrypt("mongodb://u:密碼@h")) == "mongodb://u:密碼@h"
     print("ok")
 

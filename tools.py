@@ -1,11 +1,14 @@
+import contextlib
 import glob
 import json
 import os
 import re
 import shutil
 import tempfile
+import time
 from pathlib import Path
 
+CONFIG_PREFIX = "mongo-transfer-"
 TOOLS = ("mongodump", "mongorestore", "mongoexport", "mongoimport")
 FORMATS = {".json": "json", ".csv": "csv", ".bson": "bson"}
 
@@ -39,10 +42,22 @@ def mask_credentials(text):
 
 def write_config(uri):
     """URI 寫進暫存 --config 檔，避免密碼出現在命令列（工作管理員看得到）"""
-    fd, path = tempfile.mkstemp(prefix="mongo-transfer-", suffix=".yaml")
+    fd, path = tempfile.mkstemp(prefix=CONFIG_PREFIX, suffix=".yaml")
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(f"uri: {json.dumps(strip_db(uri))}\n")
     return path
+
+
+def cleanup_configs(min_age=60):
+    """程式被強制結束時會留下含明文 URI 的 --config 檔；剛建立的可能屬於另一個執行中的視窗，先略過"""
+    for p in Path(tempfile.gettempdir()).glob(CONFIG_PREFIX + "*.yaml"):
+        with contextlib.suppress(OSError):
+            if time.time() - p.stat().st_mtime > min_age:
+                p.unlink()
+
+
+def safe_filename(name):
+    return re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name)
 
 
 def _base_name(path):
@@ -85,7 +100,7 @@ def export_args(db, coll, fmt, out_dir, query="", fields="", json_array=False, p
     args = ["--db", db, "--collection", coll] + (["--query", query] if query else [])
     if fmt == "bson":
         return "mongodump", args + ["--out", out_dir] + ["--gzip"] * gzip
-    args += ["--out", str(Path(out_dir) / f"{coll}.{fmt}")]
+    args += ["--out", str(Path(out_dir) / f"{safe_filename(coll)}.{fmt}")]
     if fmt == "csv":
         return "mongoexport", args + ["--type=csv", "--fields", fields]
     return "mongoexport", args + ["--jsonArray"] * json_array + ["--pretty"] * pretty

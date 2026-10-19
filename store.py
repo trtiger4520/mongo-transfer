@@ -58,7 +58,11 @@ def save_connections(conns):
 
 
 def load_settings():
-    return _read(SETTINGS_FILE, {})
+    try:
+        return _read(SETTINGS_FILE, {})
+    except ValueError:
+        # 只存 mongo tools 路徑，損毀時重新自動偵測即可
+        return {}
 
 
 def save_settings(settings):

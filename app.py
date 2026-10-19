@@ -1,3 +1,4 @@
+import contextlib
 import os
 import subprocess
 import sys
@@ -424,7 +425,6 @@ class MainWindow(QMainWindow):
     def run_jobs(self, jobs):
         if not jobs:
             return
-        self.cfg = tools.write_config(self.uri)
         self.queue, self.failed, self.total = list(jobs), 0, len(jobs)
         self.tabs.setEnabled(False)
         self.left.setEnabled(False)
@@ -437,12 +437,20 @@ class MainWindow(QMainWindow):
             return
         exe, args = self.queue.pop(0)
         self.log(f"\n> {exe} {subprocess.list2cmdline(args)}")
+        try:
+            self.cfg = tools.write_config(self.uri)
+        except OSError as e:
+            self.failed += 1
+            self.log(f"無法建立暫存設定檔：{e}")
+            self._next()
+            return
         self.proc.start(os.path.join(self.tools_dir, exe + ".exe"), ["--config", self.cfg, *args])
 
     def _on_output(self):
         self.log(tools.mask_credentials(bytes(self.proc.readAllStandardOutput()).decode("utf-8", "replace").rstrip()))
 
     def _on_finished(self, code, status):
+        self._remove_cfg()
         if code != 0 or status != QProcess.NormalExit:
             self.failed += 1
             self.log(f"失敗（結束碼 {code}）")
@@ -450,19 +458,24 @@ class MainWindow(QMainWindow):
 
     def _on_error(self, error):
         if error == QProcess.FailedToStart:
+            self._remove_cfg()
             self.failed += 1
             self.log(f"無法啟動：{self.proc.errorString()}")
             self._next()
 
     def cancel(self):
+        self.failed += len(self.queue)
         self.queue.clear()
         self.log("使用者取消")
         self.proc.kill()
 
-    def _done(self):
+    def _remove_cfg(self):
         if self.cfg:
-            os.remove(self.cfg)
+            with contextlib.suppress(OSError):
+                os.remove(self.cfg)
             self.cfg = None
+
+    def _done(self):
         self.log(f"\n完成：{self.total - self.failed}/{self.total} 成功" + (f"，{self.failed} 失敗" if self.failed else ""))
         self.tabs.setEnabled(True)
         self.left.setEnabled(True)
@@ -472,13 +485,13 @@ class MainWindow(QMainWindow):
         if self.proc.state() != QProcess.NotRunning:
             self.cancel()
             self.proc.waitForFinished(3000)
-        if self.cfg:
-            os.remove(self.cfg)
+        self._remove_cfg()
         super().closeEvent(event)
 
 
 def main():
     app = QApplication(sys.argv)
+    tools.cleanup_configs()
     try:
         conns = store.load_connections()
     except Exception as e:

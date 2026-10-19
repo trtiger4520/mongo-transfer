@@ -33,7 +33,8 @@ python -m venv .venv
 ## 資料存放
 
 - 連線清單：`%APPDATA%\mongo-transfer\connections.json`，連線字串以 Windows DPAPI 加密（只有同一個 Windows 帳號能解開）
-- 執行時連線字串寫進暫存 `--config` 檔傳給 mongo tools，不出現在命令列，工作結束即刪除
+- 執行時連線字串寫進暫存 `--config` 檔傳給 mongo tools，不出現在命令列，每個工作結束即刪除；程式被強制結束留下的檔案，下次啟動時清除
+- 匯出檔名中 Windows 不允許的字元（`<>:"/\|?*`）會換成 `_`
 
 ## 測試
 
