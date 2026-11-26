@@ -4,6 +4,7 @@ import json
 import os
 import re
 import shutil
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -15,7 +16,8 @@ FORMATS = {".json": "json", ".csv": "csv", ".bson": "bson"}
 
 def find_tools_dir(preferred=None):
     which = shutil.which("mongodump")
-    dirs = [preferred, which and os.path.dirname(which), r"C:\tools\mongodb-tools\bin",
+    app_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+    dirs = [preferred, app_dir, which and os.path.dirname(which), r"C:\tools\mongodb-tools\bin",
             *sorted(glob.glob(r"C:\Program Files\MongoDB\Tools\*\bin"), reverse=True)]
     for d in dirs:
         if d and all(os.path.isfile(os.path.join(d, t + ".exe")) for t in TOOLS):
