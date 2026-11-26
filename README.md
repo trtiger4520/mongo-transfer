@@ -11,7 +11,7 @@ Windows 上的 MongoDB 匯入匯出 GUI，底層呼叫 MongoDB Database Tools（
 ## 需求
 
 - Python 3.13
-- [MongoDB Database Tools](https://www.mongodb.com/try/download/database-tools)：會依序找「設定」指定的路徑、PATH、`C:\tools\mongodb-tools\bin`、`C:\Program Files\MongoDB\Tools\*\bin`
+- [MongoDB Database Tools](https://www.mongodb.com/try/download/database-tools)：會依序找「設定」指定的路徑、程式（exe）所在資料夾、PATH、`C:\tools\mongodb-tools\bin`、`C:\Program Files\MongoDB\Tools\*\bin`
 
 ## 執行
 
@@ -25,10 +25,19 @@ python -m venv .venv
 
 ```powershell
 .\.venv\Scripts\pip install pyinstaller
-.\.venv\Scripts\pyinstaller --noconfirm --windowed --name MongoTransfer app.py
+.\.venv\Scripts\pyinstaller --noconfirm --onefile --windowed --name MongoTransfer app.py
 ```
 
-輸出在 `dist\MongoTransfer\MongoTransfer.exe`
+輸出單一檔案 `dist\MongoTransfer.exe`；把 mongo tools 的四個 exe 放在同一個資料夾即可免設定
+
+## 發布
+
+推 `v*` tag 會觸發 [release.yml](.github/workflows/release.yml)：跑測試、打包，並在 GitHub Release 附上單檔 `MongoTransfer-<tag>.exe` 與資料夾版 `MongoTransfer-<tag>-win64.zip`
+
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
+```
 
 ## 資料存放
 
